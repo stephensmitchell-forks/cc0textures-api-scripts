@@ -1,4 +1,4 @@
-#Define parameters and allowed values
+###PARAMETERS###
 
 Param(
     [String]$query,
@@ -6,6 +6,23 @@ Param(
     [ValidateSet("Alphabet","Popular","Latest")][String]$sort,
     [String]$id
 )
+
+###FUNCTIONS###
+
+function FormatSize($bytes) 
+{
+    $suffix = "B", "KB", "MB", "GB", "TB"
+    $index = 0
+    while ($bytes -gt 1kb) 
+    {
+        $bytes = $bytes / 1kb
+        $index++
+    } 
+
+    "{0:N1} {1}" -f $bytes, $suffix[$index]
+}
+
+###MAIN SCRIPT###
 
 #Initialize variables for the rest of the script
 #TODO Expose the Regexes as parameters
@@ -30,7 +47,12 @@ $apiOutput = ($webRequest.Content | ConvertFrom-Csv)
 #Display the number of results and ask user whether to continue
 #TODO Display more info (such as total size)
 
-$apiOutput.Count
+
+$numberOfDownloads = $apiOutput.Count
+$totalSizeBytes = ($apiOutput | Measure-Object -Property Size -Sum).Sum
+$totalSizeFormatted = FormatSize($totalSizeBytes)
+
+write-host "Found $numberOfDownloads files with a total size of $totalSizeFormatted " -f green
 pause
 
 #Loop over API output and perform downloads
