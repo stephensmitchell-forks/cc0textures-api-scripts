@@ -1,11 +1,27 @@
+Param(
+    [String]$query,
+    [ValidateSet("PhotoTexturePBR","PhotoTexturePlain","SBSAR","3DModel")][String]$type,
+    [ValidateSet("Alphabet","Popular","Latest")][String]$sort,
+    [String]$id
+)
+
 $apiUrl = "https://cc0textures.com/api/v1/downloads_csv"
 $attributeRegex = [RegEx]("")
 $filetypeRegex = [RegEx]("")
 $downloadDirectory = "$PSScriptRoot\Downloads"
 
-$postParameters 
-$webRequest = Invoke-WebRequest -Uri "$apiUrl"
+$getParameters = @{
+    q  = $query
+    type = $type
+    sort = $sort
+    id = $id
+}
+
+$webRequest = Invoke-WebRequest -Uri "$apiUrl" -Body $getParameters
 $apiOutput = ($webRequest.Content | ConvertFrom-Csv)
+
+$apiOutput.Count
+pause
 
 $apiOutput | Where-Object{ $_.DownloadAttribute -match $attributeRegex -and $_.Filetype -match $filetypeRegex } | ForEach-Object{
 
