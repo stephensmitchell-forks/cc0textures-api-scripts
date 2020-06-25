@@ -2,7 +2,6 @@ $apiUrl = "https://cc0textures.com/api/v1/downloads_csv"
 $attributeRegex = [RegEx]("")
 $filetypeRegex = [RegEx]("")
 $downloadDirectory = "$PSScriptRoot\Downloads"
-#$patreonKey = (Import-CliXml -Path "$PSScriptRoot\Patreon-Credentials.xml").GetNetworkCredential().password
 
 $postParameters 
 $webRequest = Invoke-WebRequest -Uri "$apiUrl"
