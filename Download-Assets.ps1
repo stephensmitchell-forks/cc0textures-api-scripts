@@ -6,12 +6,13 @@ Param(
     [ValidateSet("Alphabet","Popular","Latest")][String]$sort,
     [String]$id,
     [String]$attribute="",
-    [String]$downloadPath = "$PSScriptRoot\CC0Textures-Downloads",
+    [String]$downloadPath = "$PSScriptRoot",
     [String]$keyFile = "$PSScriptRoot\Patreon-Credentials.xml",
     [Boolean]$makeSubfolders=$true,
     [Boolean]$useTestEnvironment=$false
 )
 $ErrorActionPreference = 'Stop'
+
 #region Functions
 
 #Slightly modified version of https://stackoverflow.com/a/40887001
@@ -30,16 +31,20 @@ function FormatSize($bytes)
 
 #region Initializaton
 
-#Initialize variables for the rest of the script
-
+#Select Environment
 if($useTestEnvironment){
     $apiUrl = "https://test.cc0textures.com/api/v1/downloads_csv"
 }else{
     $apiUrl = "https://cc0textures.com/api/v1/downloads_csv"
 }
 $attributeRegex = [RegEx]("$attribute")
-$downloadDirectory = Resolve-Path -Path "$downloadPath"
 
+#Validate Download path
+if(Test-Path -Path "$downloadPath"){
+    $downloadDirectory = Resolve-Path -Path "$downloadPath"
+} else{
+    Throw "Download path does not exist."
+}
 #Decide whether to use the Patreon key
 
 if(Test-Path $keyFile){
@@ -49,8 +54,8 @@ if(Test-Path $keyFile){
 }
 
 #region Web Request
-#Build HTTP parameters
 
+#Build HTTP GET parameters
 $getParameters = @{
     q  = $query
     type = $type
@@ -59,14 +64,14 @@ $getParameters = @{
     patreon=[int]$usePatreon
 }
 
-#Build GET query string
-$parameterString=@()
+#Build GET query string (Because we need both GET and POST which means GET will have to be transmitted via the URL string)
+$parameterArray=@()
 $getParameters.Keys | ForEach-Object{
-   $parameterString += "{0}={1}" -f $_,$getParameters.Item($_)
+   $parameterArray += "{0}={1}" -f $_,$getParameters.Item($_)
 }
-$parameterString = $parameterString -join "&"
+$parameterString = $parameterArray -join "&"
 
-#Run
+#Build Post-Parameters and run
 Write-Host "Loading downloads from CC0 Textures API...";
 if($usePatreon){
     $postParameters = @{
@@ -77,7 +82,7 @@ if($usePatreon){
     $webRequest = Invoke-WebRequest -Uri "$($apiUrl)?$($parameterString)"
 }
 
-#Run the webrequest and apply the regexes
+#apply the regex for the attribute and count results
 
 $apiOutput = [array]($webRequest.Content | ConvertFrom-Csv | Where-Object{ $_.DownloadAttribute -match $attributeRegex})
 $numberOfDownloads = $apiOutput.Length
@@ -86,7 +91,7 @@ $totalSizeFormatted = FormatSize($totalSizeBytes)
 
 #region Confirmation
 
-#Display the number of results and ask user whether to continue
+#Display the number of results and ask user whether to continue. Exit if nothing was found
 if($numberOfDownloads -gt 0){
     write-host "Found $numberOfDownloads files with a total size of $totalSizeFormatted." -f green
     Write-Host "Files will be downloaded into $downloadDirectory" -NoNewline
