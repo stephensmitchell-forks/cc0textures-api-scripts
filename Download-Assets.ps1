@@ -9,7 +9,7 @@ Param(
 
 ###FUNCTIONS###
 
-function FormatSize($bytes) 
+function FormatSize($bytes)  #Slightly modified version of https://stackoverflow.com/a/40887001
 {
     $suffix = "B", "KB", "MB", "GB", "TB"
     $index = 0
