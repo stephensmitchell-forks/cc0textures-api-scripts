@@ -7,6 +7,7 @@ Param(
     [String]$id,
     [String]$attribute,
     [String]$filetype,
+    [ValidateScript({if ($_){  Test-Path $_}})][String]$downloadPath = "$PSScriptRoot\Downloads",
     [Boolean]$makeSubfolders=$true
 )
 
@@ -21,7 +22,7 @@ function FormatSize($bytes)
     {
         $bytes = $bytes / 1kb
         $index++
-    } 
+    }
 
     "{0:N1} {1}" -f $bytes, $suffix[$index]
 }
@@ -33,7 +34,7 @@ function FormatSize($bytes)
 $apiUrl = "https://cc0textures.com/api/v1/downloads_csv"
 $attributeRegex = [RegEx]("$attribute")
 $filetypeRegex = [RegEx]("$filetype")
-$downloadDirectory = "$PSScriptRoot\Downloads"
+$downloadDirectory = Resolve-Path -Path "$downloadPath"
 
 $getParameters = @{
     q  = $query
@@ -42,21 +43,30 @@ $getParameters = @{
     id = $id
 }
 
-#Run the webrequest
-
+#Run the webrequest and apply the regexes
+Write-Host "Loading downloads from CC0 Textures API...";
 $webRequest = Invoke-WebRequest -Uri "$apiUrl" -Body $getParameters
 $apiOutput = ($webRequest.Content | ConvertFrom-Csv | Where-Object{ $_.DownloadAttribute -match $attributeRegex -and $_.Filetype -match $filetypeRegex})
-
-#Display the number of results and ask user whether to continue
-#TODO Display more info (such as total size)
-
 
 $numberOfDownloads = $apiOutput.Count
 $totalSizeBytes = ($apiOutput | Measure-Object -Property Size -Sum).Sum
 $totalSizeFormatted = FormatSize($totalSizeBytes)
 $downloadedSizeBytes=0
 
-write-host "Found $numberOfDownloads files with a total size of $totalSizeFormatted " -f green
+#Display the number of results and ask user whether to continue
+if($numberOfDownloads -gt 0){
+    write-host "Found $numberOfDownloads files with a total size of $totalSizeFormatted." -f green
+    Write-Host "Files will be downloaded into $downloadDirectory" -NoNewline
+    if($makeSubfolders){
+        write-host " (with subdirectories per AssetID)"
+    } else{
+        write-host " (without subdirectories)"
+    }
+
+} else{
+    write-host "Could not find any downloads for these parameters. " -f red
+    exit
+}
 pause
 
 #Loop over API output and perform downloads
@@ -64,7 +74,7 @@ pause
 
 $apiOutput | ForEach-Object{
 
-    #Define output directory and final filename
+    #Define output directory and final filename (depending on whether subfolder parameter is set)
 
     if($makeSubfolders){
         $destinationDirectory = Join-Path -Path $downloadDirectory -ChildPath $_.AssetID
@@ -82,12 +92,12 @@ $apiOutput | ForEach-Object{
         write-host "Created directory: $destinationDirectory"
     }
 
-    #Calculate progression in percent
+    #Calculate progression in percent and create loading bar
+    $percentCompleted = (($downloadedSizeBytes / $totalSizeBytes) * 100)
+    $percentCompletedDisplay = $percentCompleted.ToString("0.0000")
+    $downloadStatus = "[{0}%] {1} {2} ({3})" -f $percentCompletedDisplay,$_.AssetID,$_.DownloadAttribute,(FormatSize($_.Size))
+    Write-Progress -Activity "Downloading Assets" -Status "$downloadStatus" -PercentComplete $percentCompleted;
 
-    $percentCompleted = (($downloadedSizeBytes / $totalSizeBytes) * 100).ToString("00.0")
-
-    #Display what's being downloaded and start the download
-    "[{0}%] {1}_{2} ({3})" -f $percentCompleted,$_.AssetID,$_.DownloadAttribute,(FormatSize($_.Size))
     Start-BitsTransfer -Source $sourceUrl -Destination $destinationFile
     $downloadedSizeBytes = $downloadedSizeBytes + $_.Size
 }
