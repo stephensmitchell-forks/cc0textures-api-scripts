@@ -5,6 +5,7 @@ Param(
     [ValidateSet("PhotoTexturePBR","PhotoTexturePlain","SBSAR","3DModel")][String]$type,
     [ValidateSet("Alphabet","Popular","Latest")][String]$sort,
     [String]$id,
+    [String]$category,
     [String]$attribute="",
     [String]$downloadPath = "$PSScriptRoot",
     [String]$keyFile = "$PSScriptRoot\Patreon-Credentials.xml",
@@ -61,6 +62,7 @@ $getParameters = @{
     type = $type
     sort = $sort
     id = $id
+    category = $category
     patreon=[int]$usePatreon
 }
 
