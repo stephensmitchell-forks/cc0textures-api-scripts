@@ -7,7 +7,7 @@ Param(
     [String]$id,
     [String]$attribute,
     [String]$filetype,
-    [ValidateScript({if ($_){  Test-Path $_}})][String]$downloadPath = "$PSScriptRoot\Downloads",
+    [ValidateScript({if ($_){  Test-Path $_}})][String]$downloadPath = "$PSScriptRoot\CC0Textures-Downloads",
     [Boolean]$makeSubfolders=$true
 )
 
