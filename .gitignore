@@ -4,3 +4,5 @@ CC0Textures-Downloads/
 *.xml
 *.csv
 *.tmp
+*.sbsar
+*.obj

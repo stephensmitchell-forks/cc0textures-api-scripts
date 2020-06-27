@@ -14,6 +14,8 @@ Param(
 )
 $ErrorActionPreference = 'Stop'
 
+#region Version/Welcome
+write-host "The CC0 Textures Download Script v0.2.0" -f Blue
 #region Functions
 
 #Slightly modified version of https://stackoverflow.com/a/40887001
@@ -50,8 +52,10 @@ if(Test-Path -Path "$downloadPath"){
 
 if(Test-Path $keyFile){
     $usePatreon = $true
+    Write-Host "A file with Patreon credentials was found and will be used."
 }else{
     $usePatreon = $false
+    Write-Host "No file with Patreon credentials was found."
 }
 
 #region Web Request
@@ -74,15 +78,15 @@ $getParameters.Keys | ForEach-Object{
 $parameterString = $parameterArray -join "&"
 
 #Build Post-Parameters and run
-Write-Host "Loading downloads from CC0 Textures API...";
+Write-Host "Loading downloads from CC0 Textures API ($($apiUrl)?$($parameterString)) ...";
 if($usePatreon){
     $postParameters = @{
         key = (Import-CliXml -Path "$PSScriptRoot\Patreon-Credentials.xml").GetNetworkCredential().password
     }
-    $webRequest = Invoke-WebRequest -Uri "$($apiUrl)?$($parameterString)" -Method Post -Body $postParameters
 } else{
-    $webRequest = Invoke-WebRequest -Uri "$($apiUrl)?$($parameterString)"
+    $postParameters = @{}
 }
+$webRequest = Invoke-WebRequest -Uri "$($apiUrl)?$($parameterString)" -Method Post -Body $postParameters
 
 #apply the regex for the attribute and count results
 
