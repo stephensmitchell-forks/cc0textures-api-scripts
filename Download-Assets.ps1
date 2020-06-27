@@ -27,7 +27,7 @@ function FormatSize($bytes)
         $index++
     }
 
-    "{0:N1} {1}" -f $bytes, $suffix[$index]
+    "{0:N2} {1}" -f $bytes, $suffix[$index]
 }
 
 #region Initializaton
@@ -107,7 +107,7 @@ if($numberOfDownloads -gt 0){
     write-host "Could not find any downloads for these parameters. " -f red
     exit
 }
-
+Write-Host "Start downloading?" -f Yellow
 pause
 
 #region Downloading
@@ -143,6 +143,7 @@ $apiOutput | ForEach-Object{
     Write-Progress -Activity "Downloading Assets" -Status "$downloadStatus" -PercentComplete $percentCompleted;
     
     Start-BitsTransfer -Source $sourceUrl -Destination $destinationFile -Description "$sourceUrl -> $destinationFile"
+    write-host "Created file: $destinationFile"
     $downloadedSizeBytes = $downloadedSizeBytes + $_.Size
     $finishedDownloads = $finishedDownloads + 1
 }
