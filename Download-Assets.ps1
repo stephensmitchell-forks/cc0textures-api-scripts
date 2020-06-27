@@ -1,4 +1,4 @@
-###PARAMETERS###
+#region Parameters
 
 Param(
     [String]$query,
@@ -6,13 +6,13 @@ Param(
     [ValidateSet("Alphabet","Popular","Latest")][String]$sort,
     [String]$id,
     [String]$attribute="",
-    [ValidateScript({Test-Path $_})][String]$downloadPath = "$PSScriptRoot\CC0Textures-Downloads",
+    [String]$downloadPath = "$PSScriptRoot\CC0Textures-Downloads",
     [String]$keyFile = "$PSScriptRoot\Patreon-Credentials.xml",
     [Boolean]$makeSubfolders=$true,
     [Boolean]$useTestEnvironment=$false
 )
 $ErrorActionPreference = 'Stop'
-###FUNCTIONS###
+#region Functions
 
 #Slightly modified version of https://stackoverflow.com/a/40887001
 function FormatSize($bytes)
@@ -28,7 +28,7 @@ function FormatSize($bytes)
     "{0:N1} {1}" -f $bytes, $suffix[$index]
 }
 
-###MAIN SCRIPT###
+#region Initializaton
 
 #Initialize variables for the rest of the script
 
@@ -48,6 +48,7 @@ if(Test-Path $keyFile){
     $usePatreon = $false
 }
 
+#region Web Request
 #Build HTTP parameters
 
 $getParameters = @{
@@ -83,6 +84,8 @@ $numberOfDownloads = $apiOutput.Length
 $totalSizeBytes = ($apiOutput | Measure-Object -Property Size -Sum).Sum
 $totalSizeFormatted = FormatSize($totalSizeBytes)
 
+#region Confirmation
+
 #Display the number of results and ask user whether to continue
 if($numberOfDownloads -gt 0){
     write-host "Found $numberOfDownloads files with a total size of $totalSizeFormatted." -f green
@@ -100,9 +103,10 @@ if($numberOfDownloads -gt 0){
 
 pause
 
-#Loop over API output and perform downloads
+#region Downloading
 
 $downloadedSizeBytes=0
+$finishedDownloads=0
 
 $apiOutput | ForEach-Object{
 
@@ -126,11 +130,12 @@ $apiOutput | ForEach-Object{
 
     #Calculate progression in percent and create loading bar
     $percentCompleted = (($downloadedSizeBytes / $totalSizeBytes) * 100)
-    $percentCompletedDisplay = $percentCompleted.ToString("0.0000")
-    $downloadStatus = "{0}% completed" -f $percentCompletedDisplay
+    $percentCompletedDisplay = $percentCompleted.ToString("0.00")
+    $downloadedSizeFormatted = FormatSize($downloadedSizeBytes)
+    $downloadStatus = "{0} of {1} / {2} of {3} ({4}%)" -f $finishedDownloads,$numberOfDownloads,$downloadedSizeFormatted,$totalSizeFormatted,$percentCompletedDisplay
     Write-Progress -Activity "Downloading Assets" -Status "$downloadStatus" -PercentComplete $percentCompleted;
-
     
     Start-BitsTransfer -Source $sourceUrl -Destination $destinationFile -Description "$sourceUrl -> $destinationFile"
     $downloadedSizeBytes = $downloadedSizeBytes + $_.Size
+    $finishedDownloads = $finishedDownloads + 1
 }
