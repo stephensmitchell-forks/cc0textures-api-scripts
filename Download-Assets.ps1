@@ -5,12 +5,13 @@ Param(
     [ValidateSet("PhotoTexturePBR","PhotoTexturePlain","SBSAR","3DModel")][String]$type,
     [ValidateSet("Alphabet","Popular","Latest")][String]$sort,
     [String]$id,
-    [String]$attribute,
-    [String]$filetype,
-    [ValidateScript({if ($_){  Test-Path $_}})][String]$downloadPath = "$PSScriptRoot\CC0Textures-Downloads",
-    [Boolean]$makeSubfolders=$true
+    [String]$attribute="",
+    [ValidateScript({Test-Path $_})][String]$downloadPath = "$PSScriptRoot\CC0Textures-Downloads",
+    [String]$keyFile = "$PSScriptRoot\Patreon-Credentials.xml",
+    [Boolean]$makeSubfolders=$true,
+    [Boolean]$useTestEnvironment=$false
 )
-
+$ErrorActionPreference = 'Stop'
 ###FUNCTIONS###
 
 #Slightly modified version of https://stackoverflow.com/a/40887001
@@ -31,27 +32,56 @@ function FormatSize($bytes)
 
 #Initialize variables for the rest of the script
 
-$apiUrl = "https://cc0textures.com/api/v1/downloads_csv"
+if($useTestEnvironment){
+    $apiUrl = "https://test.cc0textures.com/api/v1/downloads_csv"
+}else{
+    $apiUrl = "https://cc0textures.com/api/v1/downloads_csv"
+}
 $attributeRegex = [RegEx]("$attribute")
-$filetypeRegex = [RegEx]("$filetype")
 $downloadDirectory = Resolve-Path -Path "$downloadPath"
+
+#Decide whether to use the Patreon key
+
+if(Test-Path $keyFile){
+    $usePatreon = $true
+}else{
+    $usePatreon = $false
+}
+
+#Build HTTP parameters
 
 $getParameters = @{
     q  = $query
     type = $type
     sort = $sort
     id = $id
+    patreon=[int]$usePatreon
+}
+
+#Build GET query string
+$parameterString=@()
+$getParameters.Keys | ForEach-Object{
+   $parameterString += "{0}={1}" -f $_,$getParameters.Item($_)
+}
+$parameterString = $parameterString -join "&"
+
+#Run
+Write-Host "Loading downloads from CC0 Textures API...";
+if($usePatreon){
+    $postParameters = @{
+        key = (Import-CliXml -Path "$PSScriptRoot\Patreon-Credentials.xml").GetNetworkCredential().password
+    }
+    $webRequest = Invoke-WebRequest -Uri "$($apiUrl)?$($parameterString)" -Method Post -Body $postParameters
+} else{
+    $webRequest = Invoke-WebRequest -Uri "$($apiUrl)?$($parameterString)"
 }
 
 #Run the webrequest and apply the regexes
-Write-Host "Loading downloads from CC0 Textures API...";
-$webRequest = Invoke-WebRequest -Uri "$apiUrl" -Body $getParameters
-$apiOutput = ($webRequest.Content | ConvertFrom-Csv | Where-Object{ $_.DownloadAttribute -match $attributeRegex -and $_.Filetype -match $filetypeRegex})
 
-$numberOfDownloads = $apiOutput.Count
+$apiOutput = [array]($webRequest.Content | ConvertFrom-Csv | Where-Object{ $_.DownloadAttribute -match $attributeRegex})
+$numberOfDownloads = $apiOutput.Length
 $totalSizeBytes = ($apiOutput | Measure-Object -Property Size -Sum).Sum
 $totalSizeFormatted = FormatSize($totalSizeBytes)
-$downloadedSizeBytes=0
 
 #Display the number of results and ask user whether to continue
 if($numberOfDownloads -gt 0){
@@ -67,10 +97,12 @@ if($numberOfDownloads -gt 0){
     write-host "Could not find any downloads for these parameters. " -f red
     exit
 }
+
 pause
 
 #Loop over API output and perform downloads
 
+$downloadedSizeBytes=0
 
 $apiOutput | ForEach-Object{
 
@@ -95,10 +127,10 @@ $apiOutput | ForEach-Object{
     #Calculate progression in percent and create loading bar
     $percentCompleted = (($downloadedSizeBytes / $totalSizeBytes) * 100)
     $percentCompletedDisplay = $percentCompleted.ToString("0.0000")
-    $downloadStatus = "[{0}%] {1} {2} ({3})" -f $percentCompletedDisplay,$_.AssetID,$_.DownloadAttribute,(FormatSize($_.Size))
+    $downloadStatus = "{0}% completed" -f $percentCompletedDisplay
     Write-Progress -Activity "Downloading Assets" -Status "$downloadStatus" -PercentComplete $percentCompleted;
 
-    Start-BitsTransfer -Source $sourceUrl -Destination $destinationFile
+    
+    Start-BitsTransfer -Source $sourceUrl -Destination $destinationFile -Description "$sourceUrl -> $destinationFile"
     $downloadedSizeBytes = $downloadedSizeBytes + $_.Size
 }
-Write-Host "Completed."
