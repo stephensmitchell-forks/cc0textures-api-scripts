@@ -6,8 +6,9 @@ Param(
     [ValidateSet("Alphabet","Popular","Latest")][String]$sort,
     [String]$id,
     [String]$category,
-    [String]$attribute="",
-    [String]$downloadPath = "$PSScriptRoot",
+    [String[]]$includeAttribute,
+    [String[]]$excludeAttribute,
+    [String]$downloadDirectory = "$PSScriptRoot",
     [String]$keyFile = "$PSScriptRoot\Patreon-Credentials.xml",
     [Boolean]$makeSubfolders=$true,
     [Boolean]$useTestEnvironment=$false
@@ -38,12 +39,9 @@ if($useTestEnvironment){
 }else{
     $apiUrl = "https://cc0textures.com/api/v1/downloads_csv"
 }
-$attributeRegex = [RegEx]("$attribute")
 
 #Validate Download path
-if(Test-Path -Path "$downloadPath"){
-    $downloadDirectory = Resolve-Path -Path "$downloadPath"
-} else{
+if( -Not (Test-Path -Path "$downloadDirectory")){
     Throw "Download path does not exist."
 }
 #Decide whether to use the Patreon key
@@ -84,11 +82,18 @@ if($usePatreon){
     $webRequest = Invoke-WebRequest -Uri "$($apiUrl)?$($parameterString)"
 }
 
-#apply the regex for the attribute and count results
+#apply the attributes and count results
 
-$apiOutput = [array]($webRequest.Content | ConvertFrom-Csv | Where-Object{ $_.DownloadAttribute -match $attributeRegex})
-$numberOfDownloads = $apiOutput.Length
-$totalSizeBytes = ($apiOutput | Measure-Object -Property Size -Sum).Sum
+$downloadList = [array]($webRequest.Content | ConvertFrom-Csv)
+foreach ($attribute in $includeAttribute) {
+    $downloadList = ($downloadList | Where-Object {$_.DownloadAttribute.Split('-').Contains("$attribute")})
+}
+foreach ($attribute in $excludeAttribute) {
+    $downloadList = ($downloadList | Where-Object { -Not ($_.DownloadAttribute.Split('-').Contains("$attribute"))})
+}
+
+$numberOfDownloads = $downloadList.Length
+$totalSizeBytes = ($downloadList | Measure-Object -Property Size -Sum).Sum
 $totalSizeFormatted = FormatSize($totalSizeBytes)
 
 #region Confirmation
@@ -115,7 +120,7 @@ pause
 $downloadedSizeBytes=0
 $finishedDownloads=0
 
-$apiOutput | ForEach-Object{
+$downloadList | ForEach-Object{
 
     #Define output directory and final filename (depending on whether subfolder parameter is set)
 
@@ -141,9 +146,8 @@ $apiOutput | ForEach-Object{
     $downloadedSizeFormatted = FormatSize($downloadedSizeBytes)
     $downloadStatus = "{0} of {1} / {2} of {3} ({4}%)" -f $finishedDownloads,$numberOfDownloads,$downloadedSizeFormatted,$totalSizeFormatted,$percentCompletedDisplay
     Write-Progress -Activity "Downloading Assets" -Status "$downloadStatus" -PercentComplete $percentCompleted;
-    
-    Start-BitsTransfer -Source $sourceUrl -Destination $destinationFile -Description "$sourceUrl -> $destinationFile"
-    write-host "Created file: $destinationFile"
+    write-host "Downloading file: $destinationFile"
+    Start-BitsTransfer -Source "$sourceUrl" -Destination "$destinationFile" -Description "$sourceUrl -> $destinationFile"
     $downloadedSizeBytes = $downloadedSizeBytes + $_.Size
     $finishedDownloads = $finishedDownloads + 1
 }
