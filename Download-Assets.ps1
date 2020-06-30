@@ -7,7 +7,7 @@ Param(
     [String]$id,
     [String]$category,
     [String]$attribute="",
-    [String]$downloadPath = "$PSScriptRoot",
+    [String]$downloadDirectory = "$PSScriptRoot",
     [String]$keyFile = "$PSScriptRoot\Patreon-Credentials.xml",
     [Boolean]$makeSubfolders=$true,
     [Boolean]$useTestEnvironment=$false
@@ -41,9 +41,7 @@ if($useTestEnvironment){
 $attributeRegex = [RegEx]("$attribute")
 
 #Validate Download path
-if(Test-Path -Path "$downloadPath"){
-    $downloadDirectory = Resolve-Path -Path "$downloadPath"
-} else{
+if( -Not (Test-Path -Path "$downloadDirectory")){
     Throw "Download path does not exist."
 }
 #Decide whether to use the Patreon key
@@ -141,9 +139,8 @@ $apiOutput | ForEach-Object{
     $downloadedSizeFormatted = FormatSize($downloadedSizeBytes)
     $downloadStatus = "{0} of {1} / {2} of {3} ({4}%)" -f $finishedDownloads,$numberOfDownloads,$downloadedSizeFormatted,$totalSizeFormatted,$percentCompletedDisplay
     Write-Progress -Activity "Downloading Assets" -Status "$downloadStatus" -PercentComplete $percentCompleted;
-    
-    Start-BitsTransfer -Source $sourceUrl -Destination $destinationFile -Description "$sourceUrl -> $destinationFile"
-    write-host "Created file: $destinationFile"
+    write-host "Downloading file: $destinationFile"
+    Start-BitsTransfer -Source "$sourceUrl" -Destination "$destinationFile" -Description "$sourceUrl -> $destinationFile"
     $downloadedSizeBytes = $downloadedSizeBytes + $_.Size
     $finishedDownloads = $finishedDownloads + 1
 }
