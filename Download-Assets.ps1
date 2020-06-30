@@ -8,7 +8,11 @@ Param(
     [String]$category,
     [String[]]$includeAttribute,
     [String[]]$excludeAttribute,
-    [String]$downloadDirectory = "$PSScriptRoot",
+
+    [ValidateScript({
+        Test-Path "$_"
+    })][String]$downloadDirectory = "$PSScriptRoot",
+
     [String]$keyFile = "$PSScriptRoot\Patreon-Credentials.xml",
     [Switch]$noSubfolders,
     [Switch]$useTestEnvironment
@@ -40,13 +44,9 @@ if($useTestEnvironment){
     $apiUrl = "https://cc0textures.com/api/v1/downloads_csv"
 }
 
-#Validate Download path
-if( -Not (Test-Path -Path "$downloadDirectory")){
-    Throw "Download path does not exist."
-}
 #Decide whether to use the Patreon key
 
-if(Test-Path $keyFile){
+if(Test-Path "$keyFile"){
     $usePatreon = $true
 }else{
     $usePatreon = $false
