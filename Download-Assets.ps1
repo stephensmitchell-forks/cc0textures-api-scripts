@@ -6,7 +6,8 @@ Param(
     [ValidateSet("Alphabet","Popular","Latest")][String]$sort,
     [String]$id,
     [String]$category,
-    [String]$attribute="",
+    [String[]]$includeAttribute,
+    [String[]]$excludeAttribute,
     [String]$downloadDirectory = "$PSScriptRoot",
     [String]$keyFile = "$PSScriptRoot\Patreon-Credentials.xml",
     [Boolean]$makeSubfolders=$true,
@@ -38,7 +39,6 @@ if($useTestEnvironment){
 }else{
     $apiUrl = "https://cc0textures.com/api/v1/downloads_csv"
 }
-$attributeRegex = [RegEx]("$attribute")
 
 #Validate Download path
 if( -Not (Test-Path -Path "$downloadDirectory")){
@@ -82,11 +82,18 @@ if($usePatreon){
     $webRequest = Invoke-WebRequest -Uri "$($apiUrl)?$($parameterString)"
 }
 
-#apply the regex for the attribute and count results
+#apply the attributes and count results
 
-$apiOutput = [array]($webRequest.Content | ConvertFrom-Csv | Where-Object{ $_.DownloadAttribute -match $attributeRegex})
-$numberOfDownloads = $apiOutput.Length
-$totalSizeBytes = ($apiOutput | Measure-Object -Property Size -Sum).Sum
+$downloadList = [array]($webRequest.Content | ConvertFrom-Csv)
+foreach ($attribute in $includeAttribute) {
+    $downloadList = ($downloadList | Where-Object {$_.DownloadAttribute.Split('-').Contains("$attribute")})
+}
+foreach ($attribute in $excludeAttribute) {
+    $downloadList = ($downloadList | Where-Object { -Not ($_.DownloadAttribute.Split('-').Contains("$attribute"))})
+}
+
+$numberOfDownloads = $downloadList.Length
+$totalSizeBytes = ($downloadList | Measure-Object -Property Size -Sum).Sum
 $totalSizeFormatted = FormatSize($totalSizeBytes)
 
 #region Confirmation
@@ -113,7 +120,7 @@ pause
 $downloadedSizeBytes=0
 $finishedDownloads=0
 
-$apiOutput | ForEach-Object{
+$downloadList | ForEach-Object{
 
     #Define output directory and final filename (depending on whether subfolder parameter is set)
 
