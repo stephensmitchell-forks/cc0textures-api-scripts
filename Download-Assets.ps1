@@ -10,8 +10,8 @@ Param(
     [String[]]$excludeAttribute,
     [String]$downloadDirectory = "$PSScriptRoot",
     [String]$keyFile = "$PSScriptRoot\Patreon-Credentials.xml",
-    [Boolean]$makeSubfolders=$true,
-    [Boolean]$useTestEnvironment=$false
+    [Switch]$noSubfolders,
+    [Switch]$useTestEnvironment
 )
 $ErrorActionPreference = 'Stop'
 
@@ -102,10 +102,10 @@ $totalSizeFormatted = FormatSize($totalSizeBytes)
 if($numberOfDownloads -gt 0){
     write-host "Found $numberOfDownloads files with a total size of $totalSizeFormatted." -f green
     Write-Host "Files will be downloaded into $downloadDirectory" -NoNewline
-    if($makeSubfolders){
-        write-host " (with subdirectories per AssetID)"
-    } else{
+    if($noSubfolders){
         write-host " (without subdirectories)"
+    } else{
+        write-host " (with subdirectories per AssetID)"
     }
 
 } else{
@@ -124,10 +124,10 @@ $downloadList | ForEach-Object{
 
     #Define output directory and final filename (depending on whether subfolder parameter is set)
 
-    if($makeSubfolders){
-        $destinationDirectory = Join-Path -Path $downloadDirectory -ChildPath $_.AssetID
-    }else{
+    if($noSubfolders){
         $destinationDirectory = $downloadDirectory
+    }else{
+        $destinationDirectory = Join-Path -Path $downloadDirectory -ChildPath $_.AssetID
     }
     
     $destinationFile = Join-Path -Path $destinationDirectory -ChildPath ("{0}_{1}.{2}" -f $_.AssetID,$_.DownloadAttribute,$_.Filetype)
