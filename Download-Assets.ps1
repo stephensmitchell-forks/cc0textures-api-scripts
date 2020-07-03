@@ -88,7 +88,7 @@ if($usePatreon){
     $body = $null
     $method = "Get"
 }
-
+Write-Host "Calling '$($apiUrl)?$($parameterString)'"
 try{
     $webRequest = Invoke-WebRequest -Uri "$($apiUrl)?$($parameterString)" -Method $method -Body $body
 }catch {
@@ -103,10 +103,11 @@ try{
 
 $downloadList = [array]($webRequest.Content | ConvertFrom-Csv)
 foreach ($attribute in $includeAttribute) {
-    $downloadList = ($downloadList | Where-Object {$_.DownloadAttribute.Split('-').Contains("$attribute")})
+    [array]$downloadList = ($downloadList | Where-Object {$_.DownloadAttribute.Split('-').Contains("$attribute")})
 }
+$downloadList
 foreach ($attribute in $excludeAttribute) {
-    $downloadList = ($downloadList | Where-Object { -Not ($_.DownloadAttribute.Split('-').Contains("$attribute"))})
+    [array]$downloadList = ($downloadList | Where-Object { -Not ($_.DownloadAttribute.Split('-').Contains("$attribute"))})
 }
 
 $numberOfDownloads = $downloadList.Length
