@@ -8,7 +8,14 @@ Param(
     [String]$category,
     [String[]]$includeAttribute,
     [String[]]$excludeAttribute,
-    [String]$downloadDirectory = "$PSScriptRoot",
+    [ValidateScript({
+        #Test-Path "$_"
+        if( -Not (Test-Path "$_")){
+            Throw "The download directory $_ does not exist."
+        }else{
+            $true
+        }
+    })][String]$downloadDirectory = "$PSScriptRoot",
     [String]$keyFile = "$PSScriptRoot\Patreon-Credentials.xml",
     [Switch]$noSubfolders,
     [Switch]$useTestEnvironment
@@ -40,16 +47,14 @@ if($useTestEnvironment){
     $apiUrl = "https://cc0textures.com/api/v1/downloads_csv"
 }
 
-#Validate Download path
-if( -Not (Test-Path -Path "$downloadDirectory")){
-    Throw "Download path does not exist."
-}
 #Decide whether to use the Patreon key
 
-if(Test-Path $keyFile){
+if(Test-Path "$keyFile"){
     $usePatreon = $true
+    write-host "A Patreon key file has been found."
 }else{
     $usePatreon = $false
+    write-host "No Patreon key file has been found."
 }
 
 #region Web Request
@@ -74,12 +79,23 @@ $parameterString = $parameterArray -join "&"
 #Build Post-Parameters and run
 Write-Host "Loading downloads from CC0 Textures API...";
 if($usePatreon){
-    $postParameters = @{
+    $body = @{
         key = (Import-CliXml -Path "$PSScriptRoot\Patreon-Credentials.xml").GetNetworkCredential().password
     }
-    $webRequest = Invoke-WebRequest -Uri "$($apiUrl)?$($parameterString)" -Method Post -Body $postParameters
+    $method = "Post"
 } else{
-    $webRequest = Invoke-WebRequest -Uri "$($apiUrl)?$($parameterString)"
+    $body = $null
+    $method = "Get"
+}
+
+try{
+    $webRequest = Invoke-WebRequest -Uri "$($apiUrl)?$($parameterString)" -Method $method -Body $body
+}catch {
+    switch ($_.Exception.Response.StatusCode.Value__)                         
+    {                        
+        401{Throw "HTTP Error 401`nThis likely means that you have sent invalid Patreon credentials."}
+        404{Throw "HTTP Error 404"}                 
+    }
 }
 
 #apply the attributes and count results
