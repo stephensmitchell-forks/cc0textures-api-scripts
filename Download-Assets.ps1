@@ -105,7 +105,6 @@ $downloadList = [array]($webRequest.Content | ConvertFrom-Csv)
 foreach ($attribute in $includeAttribute) {
     [array]$downloadList = ($downloadList | Where-Object {$_.DownloadAttribute.Split('-').Contains("$attribute")})
 }
-$downloadList
 foreach ($attribute in $excludeAttribute) {
     [array]$downloadList = ($downloadList | Where-Object { -Not ($_.DownloadAttribute.Split('-').Contains("$attribute"))})
 }
