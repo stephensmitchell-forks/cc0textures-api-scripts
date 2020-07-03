@@ -9,8 +9,11 @@ Param(
     [String[]]$includeAttribute,
     [String[]]$excludeAttribute,
     [ValidateScript({
+        #Test-Path "$_"
         if( -Not (Test-Path "$_")){
-            Throw "The download directory '$_' does not exist."
+            Throw "The download directory $_ does not exist."
+        }else{
+            $true
         }
     })][String]$downloadDirectory = "$PSScriptRoot",
     [String]$keyFile = "$PSScriptRoot\Patreon-Credentials.xml",
