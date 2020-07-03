@@ -18,6 +18,7 @@ Param(
     })][String]$downloadDirectory = "$PSScriptRoot",
     [String]$keyFile = "$PSScriptRoot\Patreon-Credentials.xml",
     [Switch]$noSubfolders,
+    [Switch]$skipExisting,
     [Switch]$useTestEnvironment
 )
 $ErrorActionPreference = 'Stop'
@@ -149,21 +150,25 @@ $downloadList | ForEach-Object{
     $destinationFile = Join-Path -Path $destinationDirectory -ChildPath ("{0}_{1}.{2}" -f $_.AssetID,$_.DownloadAttribute,$_.Filetype)
     $sourceUrl = if($_.PrettyDownloadLink -eq ''){$_.RawDownloadLink}else{$_.PrettyDownloadLink}
 
-    #Create an output directory if it does not exist
+    if( (Test-Path -Path "$destinationFile") -and $skipExisting ){
+        Write-Host "File exists, skipping: $destinationFile"
+    } else{
+        #Create an output directory if it does not exist
 
-    if(!(Test-Path $destinationDirectory)){
-        New-Item -Path $destinationDirectory -ItemType "directory" | Out-Null
-        write-host "Created directory: $destinationDirectory"
+        if(!(Test-Path $destinationDirectory)){
+            New-Item -Path $destinationDirectory -ItemType "directory" | Out-Null
+            write-host "Created directory: $destinationDirectory"
+        }
+
+        #Calculate progression in percent and create loading bar
+        $percentCompleted = (($downloadedSizeBytes / $totalSizeBytes) * 100)
+        $percentCompletedDisplay = $percentCompleted.ToString("0.00")
+        $downloadedSizeFormatted = FormatSize($downloadedSizeBytes)
+        $downloadStatus = "{0} of {1} / {2} of {3} ({4}%)" -f $finishedDownloads,$numberOfDownloads,$downloadedSizeFormatted,$totalSizeFormatted,$percentCompletedDisplay
+        Write-Progress -Activity "Downloading Assets" -Status "$downloadStatus" -PercentComplete $percentCompleted;
+        write-host "Downloading file: $destinationFile"
+        Start-BitsTransfer -Source "$sourceUrl" -Destination "$destinationFile" -Description "$sourceUrl -> $destinationFile"
     }
-
-    #Calculate progression in percent and create loading bar
-    $percentCompleted = (($downloadedSizeBytes / $totalSizeBytes) * 100)
-    $percentCompletedDisplay = $percentCompleted.ToString("0.00")
-    $downloadedSizeFormatted = FormatSize($downloadedSizeBytes)
-    $downloadStatus = "{0} of {1} / {2} of {3} ({4}%)" -f $finishedDownloads,$numberOfDownloads,$downloadedSizeFormatted,$totalSizeFormatted,$percentCompletedDisplay
-    Write-Progress -Activity "Downloading Assets" -Status "$downloadStatus" -PercentComplete $percentCompleted;
-    write-host "Downloading file: $destinationFile"
-    Start-BitsTransfer -Source "$sourceUrl" -Destination "$destinationFile" -Description "$sourceUrl -> $destinationFile"
     $downloadedSizeBytes = $downloadedSizeBytes + $_.Size
     $finishedDownloads = $finishedDownloads + 1
 }
