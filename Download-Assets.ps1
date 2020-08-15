@@ -164,7 +164,7 @@ $DownloadList | ForEach-Object{
         $PercentCompleted = (($DownloadedSizeBytes / $TotalSizeBytes) * 100)
         $PercentCompletedDisplay = $PercentCompleted.ToString("0.00")
         $DownloadedSizeFormatted = FormatSize($DownloadedSizeBytes)
-        $DownloadStatus = "{0} of {1} / {2} of {3} ({4}%)" -f $FinishedDownloads,$NumberOfDownloads,$DownloadedSizeFormatted,$TotalSizeFormatted,$PercentCompletedDisplay
+        $DownloadStatus = "{0} of {1} / {2} of {3} / {4}%" -f $FinishedDownloads,$NumberOfDownloads,$DownloadedSizeFormatted,$TotalSizeFormatted,$PercentCompletedDisplay
         Write-Progress -Activity "Downloading Assets" -Status "$DownloadStatus" -PercentComplete $PercentCompleted;
         write-host "Downloading file: $DestinationFile"
         Start-BitsTransfer -Source "$SourceUrl" -Destination "$DestinationFile" -Description "$SourceUrl -> $DestinationFile"
