@@ -95,7 +95,8 @@ try{
     switch ($_.Exception.Response.StatusCode.Value__)                         
     {                        
         401{Throw "HTTP Error 401`nThis likely means that you have sent invalid Patreon credentials."}
-        404{Throw "HTTP Error 404"}
+        404{Throw "HTTP Error 404`nThe requested document could not be found. This probably means that the API has been changed or removed but the script has not yet been updated."}
+        404{Throw "HTTP Error 500`nInternal server error."}
     }
 }
 
