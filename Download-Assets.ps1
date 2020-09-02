@@ -16,7 +16,6 @@ Param(
             $True
         }
     })][String]$DownloadDirectory = "$PSScriptRoot",
-    [String]$KeyFile = "$PSScriptRoot\Patreon-Credentials.xml",
     [Switch]$NoSubfolders,
     [Switch]$SkipExisting,
     [Switch]$UseTestEnvironment
@@ -48,16 +47,6 @@ if($UseTestEnvironment){
     $ApiUrl = "https://cc0textures.com/api/v1/downloads_csv"
 }
 
-#Decide whether to use the Patreon key
-
-if(Test-Path "$KeyFile"){
-    $UsePatreon = $True
-    write-host "A Patreon key file has been found."
-}else{
-    $UsePatreon = $False
-    write-host "No Patreon key file has been found."
-}
-
 #region Web Request
 
 #Build HTTP GET parameters
@@ -67,34 +56,17 @@ $GetParameters = @{
     sort = $Sort
     id = $Id
     category = $Category
-    patreon=[int]$UsePatreon
 }
-
-#Build GET query string (Because we need both GET and POST which means GET will have to be transmitted via the URL string)
-$ParameterArray=@()
-$GetParameters.Keys | ForEach-Object{
-   $ParameterArray += "{0}={1}" -f $_,$GetParameters.Item($_)
-}
-$ParameterString = $ParameterArray -join "&"
 
 #Build Post-Parameters and run
 Write-Host "Loading downloads from CC0 Textures API...";
-if($UsePatreon){
-    $Body = @{
-        key = (Import-CliXml -Path "$PSScriptRoot\Patreon-Credentials.xml").GetNetworkCredential().password
-    }
-    $Method = "Post"
-} else{
-    $Body = $Null
-    $Method = "Get"
-}
-Write-Host "Calling '$($ApiUrl)?$($ParameterString)'"
+
+Write-Host "Calling '$ApiUrl'"
 try{
-    $WebRequest = Invoke-WebRequest -Uri "$($ApiUrl)?$($ParameterString)" -Method $Method -Body $Body
+    $WebRequest = Invoke-WebRequest -Uri "$ApiUrl" -Method "Get" -Body $GetParameters
 }catch {
     switch ($_.Exception.Response.StatusCode.Value__)                         
     {                        
-        401{Throw "HTTP Error 401`nThis likely means that you have sent invalid Patreon credentials."}
         404{Throw "HTTP Error 404`nThe requested document could not be found. This probably means that the API has been changed or removed but the script has not yet been updated."}
         404{Throw "HTTP Error 500`nInternal server error."}
     }
